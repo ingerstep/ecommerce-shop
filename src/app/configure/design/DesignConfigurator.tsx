@@ -29,6 +29,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, ChevronsUpDown } from "lucide-react";
 import { BASE_PRICE } from "@/config/products";
+import { useUploadThing } from "@/lib/uploadthing";
+import { useToast } from "@/components/ui/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { saveConfig as _saveConfig, SaveConfigArgs } from "./actions";
+import { useRouter } from "next/navigation";
 
 interface DesignConfiguratorProps {
   configId: string;
@@ -41,6 +46,26 @@ const DesignConfigurator = ({
   imageUrl,
   imageDimensions,
 }: DesignConfiguratorProps) => {
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const { mutate: saveConfig } = useMutation({
+    mutationKey: ["save-config"],
+    mutationFn: async (args: SaveConfigArgs) => {
+      await Promise.all([saveConfiguration(), _saveConfig(args)]);
+    },
+    onError: () => {
+      toast({
+        title: "Something went wrong",
+        description: "There was an error on our end. Please try again.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: () => {
+      router.push(`/configure/preview?id=${configId}`);
+    },
+  });
+
   const [options, setOptions] = useState<{
     color: (typeof COLORS)[number];
     model: (typeof MODELS.options)[number];
@@ -66,6 +91,8 @@ const DesignConfigurator = ({
   const phoneCaseRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const { startUpload } = useUploadThing("imageUploader");
+
   async function saveConfiguration() {
     try {
       const {
@@ -78,11 +105,11 @@ const DesignConfigurator = ({
       const { left: containerLeft, top: containerTop } =
         containerRef.current!.getBoundingClientRect();
 
-      const leftOffset = caseLeft - containerLeft;
-      const topOffset = caseTop - containerTop;
+      // const leftOffset = caseLeft - containerLeft;
+      // const topOffset = caseTop - containerTop;
 
-      const actualX = renderedPosition.x - leftOffset;
-      const actualY = renderedPosition.y - topOffset;
+      const actualX = renderedPosition.x;
+      const actualY = renderedPosition.y;
 
       const canvas = document.createElement("canvas");
       canvas.width = width;
@@ -107,7 +134,17 @@ const DesignConfigurator = ({
       const base64Data = base64.split(",")[1];
 
       const blob = base64ToBlob(base64Data, "image/png");
-    } catch (err) {}
+      const file = new File([blob], "filename.png", { type: "image/png" });
+
+      await startUpload([file], { configId });
+    } catch (err) {
+      toast({
+        title: "Something went wrong",
+        description:
+          "There was a problem saving your config, please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
   function base64ToBlob(base64: string, mimeType: string) {
@@ -360,7 +397,13 @@ const DesignConfigurator = ({
                 )}
               </p>
               <Button
-                onClick={() => saveConfiguration()}
+                onClick={() => saveConfig({
+                  configId,
+                  color: options.color.value,
+                  finish:options.finish.value,
+                  material: options.material.value,
+                  model: options.model.value
+                })}
                 size="sm"
                 className="w-full"
               >

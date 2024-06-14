@@ -27,15 +27,15 @@ export const MODELS = {
         },
         {
             label: 'iPhone 13',
-            value: 'iphonex13'
+            value: 'iphone13'
         },
         {
             label: 'iPhone 14',
-            value: 'iphonex14'
+            value: 'iphone14'
         },
         {
             label: 'iPhone 15',
-            value: 'iphonex15'
+            value: 'iphone15'
         },
     ]
 } as const
